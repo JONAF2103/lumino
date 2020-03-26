@@ -52,7 +52,8 @@ from raiden.lightclient.models.light_client_protocol_message import LightClientP
 
 from raiden.messages import RequestMonitoring, LockedTransfer, RevealSecret, Unlock, Delivered, SecretRequest, \
     Processed, LockExpired
-from raiden.settings import DEFAULT_RETRY_TIMEOUT, DEVELOPMENT_CONTRACT_VERSION, HUB_MAX_LIGHT_CLIENTS
+from raiden.settings import DEFAULT_RETRY_TIMEOUT, DEVELOPMENT_CONTRACT_VERSION, HUB_MAX_LIGHT_CLIENTS, \
+    HUB_MAX_LIGHT_CLIENTS_PER_MATRIX_SERVER
 
 from raiden.transfer import architecture, views
 from raiden.transfer.events import (
@@ -120,7 +121,7 @@ from raiden.settings import (
 
 from raiden.utils.cli import get_matrix_servers
 
-from raiden.network.transport.matrix.utils import make_client
+from raiden.network.transport.matrix.utils import make_client, server_url_to_name, get_server_url
 
 from urllib.parse import urlparse
 
@@ -1621,13 +1622,32 @@ class RaidenAPI:
         # fetch list of known servers from raiden-network/raiden-tranport repo
         available_servers_url = DEFAULT_MATRIX_KNOWN_SERVERS[self.raiden.config["environment_type"]]
         available_servers = get_matrix_servers(available_servers_url)
-        client = make_client(available_servers)
+        available_servers_with_capacity = []
+
+        # get the server to use since we only can have 15 clients per matrix server
+        for server_url in available_servers:
+            server_name = server_url_to_name(server_url)
+            connected_clients_count = self.raiden.wal \
+                .storage.get_matrix_server_connected_clients_count(server_name=server_name)
+            if connected_clients_count < HUB_MAX_LIGHT_CLIENTS_PER_MATRIX_SERVER:
+                available_servers_with_capacity.append(get_server_url(server_name, available_servers))
+
+        if available_servers_with_capacity.__len__() > 0:
+            client = make_client(available_servers_with_capacity)
+        else:
+            client = make_client(available_servers)
+
         server_url = client.api.base_url
         server_name = urlparse(server_url).netloc
+
+        self.raiden.wal.storage.add_connection_to_available_matrix_server(server_name=server_name)
+
         data_to_sign = {
             "display_name_to_sign": "@" + to_normalized_address(address) + ":" + server_name,
             "password_to_sign": server_name,
-            "seed_retry": "seed"}
+            "seed_retry": "seed"
+        }
+
         return data_to_sign
 
     def register_light_client(self,
@@ -1754,6 +1774,8 @@ class RaidenAPI:
         if light_client:
             log.debug("Checking key " + api_key + " for LC with address " + light_client["address"])
             if light_client["pending_for_deletion"]:
+                self.raiden.wal.storage\
+                    .remove_connection_from_available_matrix_server(light_client["current_server_name"])
                 self.raiden.wal.storage.delete_light_client(light_client["address"])
                 force_on_boarding = True
         else:

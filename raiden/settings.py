@@ -22,7 +22,7 @@ DEFAULT_MATRIX_KNOWN_SERVERS = {
         "/master/known_servers.main.yaml"
     ),
     Environment.DEVELOPMENT: (
-        "https://raw.githubusercontent.com/marcosmartinez7/matrix-known-servers/master/known_servers.test.yaml"
+        "http://localhost/known_servers.test.yaml"
     ),
 }
 
@@ -59,4 +59,5 @@ MONITORING_MIN_CAPACITY = TokenAmount(100)
 
 MEDIATION_FEE = FeeAmount(0)
 
-HUB_MAX_LIGHT_CLIENTS = 15
+HUB_MAX_LIGHT_CLIENTS = 100
+HUB_MAX_LIGHT_CLIENTS_PER_MATRIX_SERVER = 10

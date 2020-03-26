@@ -288,7 +288,7 @@ class MatrixTransport(Runnable):
 
         self._client: GMatrixClient = make_client(
             [get_server_url(current_server_name, available_servers)] if current_server_name else available_servers,
-            http_pool_maxsize=4,
+            http_pool_maxsize=20,
             http_retry_timeout=40,
             http_retry_delay=_http_retry_delay,
         )

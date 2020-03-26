@@ -28,6 +28,7 @@ from gevent.event import Event
 from gevent.lock import Semaphore
 from matrix_client.errors import MatrixError, MatrixRequestError
 
+from raiden.benchmark import timing
 from raiden.exceptions import InvalidProtocolMessage, InvalidSignature, TransportError
 from raiden.messages import (
     Message,
@@ -396,7 +397,7 @@ def _check_previous_login(client: GMatrixClient,
         )
     return None
 
-
+@timing
 def _try_login_or_register(client: GMatrixClient,
                            base_username: str,
                            password: str,
@@ -454,7 +455,8 @@ def login_or_register(
 ) -> User:
 
     """Login to a Raiden matrix server with password and displayname proof-of-keys
-    - Username is in the format: 0x<eth_address>(.<suffix>)?, where the suffix is not required,
+    - Username is in the format: 0x<eth_address>(.<suffix>)?, where the suffix is not requimport time
+ired,
     but a deterministic (per-account) random 8-hex string to prevent DoS by other users registering
     our address
     - Password is the signature of the server hostname, verified by the server to prevent account
@@ -729,3 +731,15 @@ def get_server_url(server_name, available_servers: list):
         if ((HTTP_PREFIX + URL_STARTER_PREFIX + server_name) == available_server_url) or \
            ((HTTPS_PREFIX + URL_STARTER_PREFIX + server_name) == available_server_url):
             return available_server_url
+
+
+def server_url_to_name(server_url: str):
+    """
+        This function returns the server name from a url
+        Example:
+            server_name could be https://persephone.raidentransport.digitalvirtues.com
+
+            This function will return persephone.raidentransport.digitalvirtues.com
+    """
+
+    return server_url[server_url.index(URL_STARTER_PREFIX) + URL_STARTER_PREFIX.__len__():]

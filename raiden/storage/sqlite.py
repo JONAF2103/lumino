@@ -1595,3 +1595,85 @@ class SerializedSQLiteStorage(SQLiteStorage):
             last_id = cursor.lastrowid
 
         return last_id
+
+    def get_matrix_server_connected_clients_count(self, server_name):
+        cursor = self.conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                server_name,
+                connected_clients
+            FROM available_matrix_server WHERE server_name = ?;
+            """,
+            (server_name,))
+
+        available_server = cursor.fetchone()
+
+        return available_server[1]
+
+    def add_available_matrix_server(self, server_name):
+        with self.write_lock, self.conn:
+            cursor = self.conn.execute(
+                "INSERT INTO available_matrix_server("
+                "server_name, "
+                "connected_clients"
+                ") VALUES(?, ?)",
+                (server_name, 0)
+            )
+            last_id = cursor.lastrowid
+        return last_id
+
+    def get_available_matrix_servers_on_db(self):
+        cursor = self.conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                server_name,
+                connected_clients
+            FROM available_matrix_server;
+            """)
+
+        available_servers = cursor.fetchall()
+
+        available_servers_on_db = []
+
+        for available_server in available_servers:
+            available_servers_on_db.append({
+                "server_name": available_server[0],
+                "connected_clients": available_server[1]
+            })
+
+        return available_servers_on_db
+
+    def get_available_matrix_servers_names_on_db(self):
+        available_servers_on_db = self.get_available_matrix_servers_on_db()
+        available_server_names = []
+        for available_server_on_db in available_servers_on_db:
+            available_server_names.append(available_server_on_db["server_name"])
+
+        return available_server_names
+
+    def add_connection_to_available_matrix_server(self, server_name):
+        with self.write_lock, self.conn:
+            cursor = self.conn.execute(
+                "UPDATE available_matrix_server SET connected_clients = (SELECT connected_clients + 1 "
+                "FROM available_matrix_server WHERE server_name = ?) WHERE server_name = ?",
+                (server_name, server_name)
+            )
+            last_id = cursor.lastrowid
+        return last_id
+
+    def remove_connection_from_available_matrix_server(self, server_name):
+        with self.write_lock, self.conn:
+            cursor = self.conn.execute(
+                "UPDATE available_matrix_server SET connected_clients = (SELECT connected_clients - 1 "
+                "FROM available_matrix_server WHERE server_name = ?)",
+                (server_name,)
+            )
+            last_id = cursor.lastrowid
+            self.conn.execute(
+                "UPDATE available_matrix_server SET connected_clients = 0 WHERE connected_clients < 0"
+            )
+        return last_id

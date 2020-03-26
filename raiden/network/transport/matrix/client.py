@@ -239,6 +239,7 @@ class GMatrixClient(MatrixClient):
             try:
                 # may be killed and raise exception from _handle_thread
                 self._sync(timeout_ms)
+                time.sleep(20)
                 _bad_sync_timeout = bad_sync_timeout
             except MatrixRequestError as e:
                 log.warning("A MatrixRequestError occured during sync.")
@@ -370,13 +371,16 @@ class GMatrixClient(MatrixClient):
 
     def _sync(self, timeout_ms=30000):
         """ Reimplements MatrixClient._sync, add 'account_data' support to /sync """
-        response = self.api.sync(self.sync_token, timeout_ms)
+        sync_filter = '{ "room": { "timeline" : { "limit" : %i } } }' % 20
+        response = self.api.sync(self.sync_token, timeout_ms, filter=sync_filter)
         prev_sync_token = self.sync_token
         self.sync_token = response["next_batch"]
 
         if self._handle_thread is not None:
             # if previous _handle_thread is still running, wait for it and re-raise if needed
             self._handle_thread.get()
+            # kill the old thread because if not we keep orphan threads everywhere
+            self._handle_thread.kill()
 
         is_first_sync = prev_sync_token is None
         self._handle_thread = gevent.Greenlet(self._handle_response, response, is_first_sync)

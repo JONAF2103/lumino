@@ -139,10 +139,17 @@ CREATE TABLE IF NOT EXISTS light_client_balance_proof (
 );
 """
 
+DB_CREATE_AVAILABLE_MATRIX_SERVERS = """
+CREATE TABLE IF NOT EXISTS available_matrix_server (
+    server_name TEXT PRIMARY KEY,
+    connected_clients INTEGER NULL DEFAULT 0
+);
+"""
+
 DB_SCRIPT_CREATE_TABLES = """
 PRAGMA foreign_keys=off;
 BEGIN TRANSACTION;
-{}{}{}{}{}{}{}{}{}{}{}{}
+{}{}{}{}{}{}{}{}{}{}{}{}{}
 COMMIT;
 PRAGMA foreign_keys=on;
 """.format(
@@ -157,7 +164,8 @@ PRAGMA foreign_keys=on;
     DB_CREATE_CLIENT,
     DB_CREATE_LIGHT_CLIENT_PAYMENT,
     DB_CREATE_LIGHT_CLIENT_PROTOCOL_MESSAGE,
-    DB_CREATE_LIGHT_CLIENT_BALANCE_PROOF
+    DB_CREATE_LIGHT_CLIENT_BALANCE_PROOF,
+    DB_CREATE_AVAILABLE_MATRIX_SERVERS
 )
 
 DB_STATE_EVENT_ADD_CLIENT_FK = """

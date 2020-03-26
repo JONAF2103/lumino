@@ -12,7 +12,8 @@ from definitions import ROOT_DIR
 import json
 from eth_utils import encode_hex
 
-from raiden.network.transport.matrix.utils import get_available_servers_from_config, server_is_available
+from raiden.network.transport.matrix.utils import get_available_servers_from_config, server_is_available, \
+    server_url_to_name
 from raiden.storage import serialize, sqlite
 
 from raiden.accounts import AccountManager
@@ -94,13 +95,21 @@ def _setup_matrix(config):
         light_clients = storage.get_all_light_clients()
 
         light_client_transports = []
+
+        available_servers = get_available_servers_from_config(config["transport"]["matrix"])
+        available_servers_names_on_db = storage.get_available_matrix_servers_names_on_db()
+
+        for available_server_url in available_servers:
+            server_name = server_url_to_name(available_server_url)
+            if server_name not in available_servers_names_on_db:
+                storage.add_available_matrix_server(server_name)
+
         for light_client in light_clients:
 
             current_server_name = None
 
             if light_client["current_server_name"]:
                 current_server_name = light_client["current_server_name"]
-                available_servers = get_available_servers_from_config(config["transport"]["matrix"])
                 if not server_is_available(current_server_name, available_servers):
                     # we flag the light client as pending for deletion because it's associated to a server that
                     # is not available anymore so we need to force a new on-boarding, the next request from that LC will

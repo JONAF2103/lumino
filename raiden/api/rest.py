@@ -2071,12 +2071,16 @@ class RestAPI:
 
         if light_client is not None and light_client["result_code"] == 200:
 
+            light_client_instance = self.raiden_api.raiden.wal\
+                .storage.get_light_client_by_api_key(light_client["api_key"])
+
             matrix_light_client_transport_instance = get_matrix_light_client_instance(
                 self.raiden_api.raiden.config["transport"]["matrix"],
                 password=light_client["encrypt_signed_password"],
                 display_name=light_client["encrypt_signed_display_name"],
                 seed_retry=light_client["encrypt_signed_seed_retry"],
-                address=light_client["address"])
+                address=light_client["address"],
+                current_server_name=light_client_instance["current_server_name"])
 
             self.raiden_api.raiden.start_transport_in_runtime(transport=matrix_light_client_transport_instance,
                                                               chain_state=views.state_from_raiden(
